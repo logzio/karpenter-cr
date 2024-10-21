@@ -1,0 +1,239 @@
+# -- Global API version for Custom resources.
+global:
+  apiVersion:
+    EC2NodeClass: karpenter.k8s.aws/v1
+    NodePool: karpenter.sh/v1
+
+# -- Configuration for karpenter-crd dependancy chart.
+karpenter-crd:
+  webhook:
+    enabled: true
+#     port: 8443
+#     serviceName: karpenter
+#     serviceNamespace: kube-system
+
+# -- Configuration for karpenter dependancy chart.
+karpenter:
+  enabled: true
+  serviceAccount:
+    name: karpenter
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::112233445566:role/karpenter-irsa"
+  controller:
+    {}
+    # resources:
+    #   requests:
+    #     memory: 2Gi
+    #     cpu: 1
+    #   limits:
+    #     memory: 2Gi
+    #     cpu: 2
+  settings:
+    batchMaxDuration: 10s
+    batchIdleDuration: 1s
+    clusterName: ""
+    clusterEndpoint: ""
+    interruptionQueue: ""
+    # featureGates:
+    #   spotToSpotConsolidation: false
+  serviceMonitor:
+    enabled: false
+    additionalLabels:
+      release: ""
+  tolerations:
+    []
+    # - key: CriticalAddonsOnly
+    #   operator: Exists
+    # - key: worker-role
+    #   operator: "Equal"
+    #   value: "kube-system"
+  topologySpreadConstraints:
+    []
+    # - maxSkew: 1
+    #   topologyKey: topology.kubernetes.io/zone
+    #   whenUnsatisfiable: ScheduleAnyway
+
+# -- Configuration for karpenter custom resources.
+nodeInstanceGroups:
+  - name: "default"
+    spec:
+      NodeLabels:
+        {}
+        # worker-role: test
+        # value: test
+      Annotations: {}
+      Taints:
+        []
+        # - key: worker-role
+        #   value: test
+        #   effect: NoSchedule
+      StartupTaints: []
+      Limits:
+        resources:
+          cpu: "1500"
+          memory: 1500Gi
+      # Weight: 10
+      Requirements:
+        # - InstanceType:
+        #     key: node.kubernetes.io/instance-type
+        #     operator: In
+        #     values: []
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand", "spot"]
+        # - InstanceCategory:
+        #     key: karpenter.k8s.aws/instance-category
+        #     operator: In
+        #     values: []
+        # - InstanceCPU:
+        #     key: karpenter.k8s.aws/instance-cpu
+        #     operator: In
+        #     values: []
+        # - InstanceHypervisor:
+        #     key: karpenter.k8s.aws/instance-hypervisor
+        #     operator: In
+        #     values: []
+        # - InstanceGeneration:
+        #     key: karpenter.k8s.aws/instance-generation
+        #     operator: Gt
+        #     values: []
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["c5a", "c6a", "m5a", "m6a", "r5a", "r6a"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: NotIn
+          values:
+            [
+              "nano",
+              "micro",
+              "small",
+              "medium",
+              "8xlarge",
+              "9xlarge",
+              "12xlarge",
+              "16xlarge",
+              "18xlarge",
+              "24xlarge",
+              "32xlarge",
+              "48xlarge",
+              "metal",
+            ]
+        # - key: topology.kubernetes.io/zone
+        #   operator: In
+        #   values: ["eu-west-1a"]
+        # - Region:
+        #     key: topology.kubernetes.io/region
+        #     operator: In
+        #     values: []
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+      Kubelet:
+        ClusterDNS: ["10.0.1.100", "1.1.1.1"]
+        SystemReserved:
+          cpu: 100m
+          memory: 100Mi
+          ephemeral-storage: 1Gi
+        KubeReserved:
+          cpu: 200m
+          memory: 100Mi
+          ephemeral-storage: 3Gi
+        EvictionHard:
+          memory.available: 5%
+          nodefs.available: 10%
+          nodefs.inodesFree: 10%
+        EvictionSoft:
+          memory.available: 500Mi
+          nodefs.available: 15%
+          nodefs.inodesFree: 15%
+        EvictionSoftGracePeriod:
+          memory.available: 1m
+          nodefs.available: 1m30s
+          nodefs.inodesFree: 2m
+        EvictionMaxPodGracePeriod: 60
+        ImageGCHighThresholdPercent: 85
+        ImageGCLowThresholdPercent: 80
+        CpuCFSQuota: true
+        PodsPerCore: 2
+        MaxPods: 20
+      ExpireAfter: 720h
+      TerminationGracePeriod: 48h
+      Disruption:
+        ConsolidationPolicy: WhenEmptyOrUnderutilized
+        Budgets:
+          - nodes: "10%"
+            reasons:
+              - Empty
+              - Underutilized
+          - schedule: "0 9 * * mon-fri"
+            duration: 8h
+            nodes: "0"
+            reasons:
+              - Empty
+              - Underutilized
+              - Drifted
+      BlockDeviceMappings:
+        - deviceName: /dev/xvda
+          ebs:
+            deleteOnTermination: true
+            encrypted: true
+            iops: 300
+            throughput: 125
+            volumeSize: 50Gi
+            volumeType: gp3
+        # kmsKeyID: ""
+        # snapshotID: ""
+      Tags:
+        {}
+        # team: team-a
+        # app: team-a-app
+      UserData: |-
+        MIME-Version: 1.0
+        Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+        --BOUNDARY
+        Content-Type: text/x-shellscript; charset="us-ascii"
+
+        #!/bin/bash
+        echo "Hello world"
+        --BOUNDARY--
+      AMIFamily: "AL2023"
+      AMISelectorTerms:
+        # ids:
+        # names:
+        #   - my-ami
+        # tags:
+        #   karpenter.sh/discovery: "MyCluster"
+        #   environment: test
+        alias: al2023@v20240703
+
+      SecurityGroupSelectorTerms:
+        {}
+        # ids:
+        # - sg-aaaaaaaaaaaaaaaaa
+        # - sg-bbbbbbbbbbbbbbbbb
+        # - sg-ccccccccccccccccc
+        # names:
+        #   - my-security-group
+        # tags:
+        #   karpenter.sh/discovery: "MyCluster"
+        #   environment: test
+      SubnetSelectorTerms:
+        {}
+        # ids:
+        # - subnet-aaaaaaaaaaaaa
+        # - subnet-bbbbbbbbbbbbb
+        # - subnet-ccccccccccccc
+        # tags:
+        #   karpenter.sh/discovery: "MyCluster"
+        #   environment: test
+      Role: "KarpenterNodeRole"
+      InstanceProfile: "KarpenterNodeInstanceProfile"
+      # AssociatePublicIPAddress: false
+      # DetailedMonitoring: false
+      # InstanceStorePolicy: RAID0
+      # MetadataOptions:
+      #   httpEndpoint: enabled
+      #   httpProtocolIPv6: disabled
+      #   httpPutResponseHopLimit: 2
+      #   httpTokens: required

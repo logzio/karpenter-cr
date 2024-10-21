@@ -1,0 +1,94 @@
+{{- with .Values.nodeInstanceGroups }}
+{{- range $spec := . }}
+---
+apiVersion: {{ $.Values.global.apiVersion.NodePool }}
+kind: NodePool
+metadata:
+  name: {{ $spec.name }}
+spec:
+  disruption:
+    {{- if $spec.spec.Disruption.ConsolidationPolicy }}
+    consolidationPolicy: {{ $spec.spec.Disruption.ConsolidationPolicy }}
+    {{- end }}
+    consolidateAfter: {{ $spec.spec.Disruption.ConsolidateAfter | default "1m"}}
+    {{- with $spec.spec.Disruption.Budgets }}
+    budgets:
+      {{- range $budget := . }}
+    - nodes: {{ $budget.nodes | quote }}
+      {{- if and $budget.schedule $budget.duration }}
+      schedule: {{ $budget.schedule | quote }}
+      duration: {{ $budget.duration | quote }}
+      {{- end }}
+      {{- if $budget.reasons }}
+      reasons:
+        {{- range $reason := $budget.reasons }}
+      - {{ $reason | quote }}
+        {{- end }}
+      {{- else }}
+      reasons:
+      - "Empty"
+      - "Underutilized"
+      - "Drifted"
+      {{- end }}
+      {{- end }}
+    {{- end }}
+  limits:
+    {{- toYaml $spec.spec.Limits.resources | nindent 4 }}
+  {{- if $spec.spec.Weight }}
+  weight: {{ $spec.spec.Weight }}
+  {{- end }}
+  template:
+    metadata:
+    {{- with $spec.spec.Annotations }}
+      annotations:
+      {{- range $key, $value := . }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+    {{- end }}
+      labels:
+        {{- include "app-service.labels" $ | nindent 8 }}
+    {{- with $spec.spec.NodeLabels }}
+      {{- range $key, $value := . }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+    {{- end }}
+    spec:
+      nodeClassRef:
+        group: {{ (split "/" $.Values.global.apiVersion.EC2NodeClass)._0 }}
+        kind: EC2NodeClass
+        name: {{ $spec.name }}
+    {{- with $spec.spec.Taints }}
+      taints:
+        {{- range $taint := . }}
+      - key: {{ $taint.key }}
+        effect: {{ $taint.effect }}
+        {{- if $taint.value }}
+        value: {{ $taint.value | quote }}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+    {{- with $spec.spec.StartupTaints }}
+      startupTaints:
+        {{- range $taint := . }}
+      - key: {{ $taint.key }}
+        effect: {{ $taint.effect }}
+        {{- if $taint.value }}
+        value: {{ $taint.value | quote }}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+      requirements:
+      - key: kubernetes.io/os
+        operator: In
+        values: ["linux"]
+    {{- if $spec.spec.Requirements -}}
+      {{ toYaml $spec.spec.Requirements | nindent 6 }}
+    {{- end }}
+    {{- if $spec.spec.ExpireAfter }}
+      expireAfter: {{ $spec.spec.ExpireAfter }}
+    {{- end }}
+    {{- if $spec.spec.TerminationGracePeriod }}
+      terminationGracePeriod: {{ $spec.spec.TerminationGracePeriod }}
+    {{- end }}
+{{ end }}
+{{ end }}

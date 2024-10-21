@@ -1,0 +1,155 @@
+{{- with .Values.nodeInstanceGroups }}
+{{- range $spec := . }}
+---
+apiVersion: {{ $.Values.global.apiVersion.EC2NodeClass }}
+kind: EC2NodeClass
+metadata:
+  name: {{ $spec.name }}
+spec:
+{{- with $spec.spec.Kubelet }}
+{{- if or .MaxPods .SystemReserved .KubeReserved .ImageGCHighThresholdPercent .ImageGCLowThresholdPercent .EvictionMaxPodGracePeriod .ClusterDNS .EvictionHard .EvictionSoft .EvictionSoftGracePeriod .CpuCFSQuota .PodsPerCore }}
+  kubelet:
+    {{- if .ClusterDNS }}
+    clusterDNS: 
+      {{- toYaml .ClusterDNS | nindent 6 }}
+    {{- end }}
+    {{- if .MaxPods }}
+    maxPods: {{ .MaxPods }}
+    {{- end }}
+    {{- if .SystemReserved }}
+    systemReserved:
+      {{- range $key, $val := .SystemReserved }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .KubeReserved }}
+    kubeReserved:
+      {{- range $key, $val := .KubeReserved }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .EvictionHard }}
+    evictionHard:
+      {{- range $key, $val := .EvictionHard }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .EvictionSoft }}
+    evictionSoft:
+      {{- range $key, $val := .EvictionSoft }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .EvictionSoftGracePeriod }}
+    evictionSoftGracePeriod:
+      {{- range $key, $val := .EvictionSoftGracePeriod }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .EvictionMaxPodGracePeriod }}
+    evictionMaxPodGracePeriod: {{ .EvictionMaxPodGracePeriod }}
+    {{- end }}
+    {{- if .ImageGCHighThresholdPercent }}
+    imageGCHighThresholdPercent: {{ .ImageGCHighThresholdPercent }}
+    {{- end }}
+    {{- if .ImageGCLowThresholdPercent }}
+    imageGCLowThresholdPercent: {{ .ImageGCLowThresholdPercent }}
+    {{- end }}
+    {{- if .CpuCFSQuota }}
+    cpuCFSQuota: {{ .CpuCFSQuota }}
+    {{- end }}
+    {{- if .PodsPerCore }}
+    podsPerCore: {{ .PodsPerCore }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- if $spec.spec.AMIFamily }}
+  amiFamily: {{ $spec.spec.AMIFamily }}
+{{- end }}
+{{- if $spec.spec.AMISelectorTerms }}
+  amiSelectorTerms:
+{{- with $spec.spec.AMISelectorTerms.ids }}
+  {{- range $id := . }}
+  - id: {{ $id | quote }}
+  {{- end }}
+{{- end }}
+{{- with $spec.spec.AMISelectorTerms.names }}
+  {{- range $name := . }}
+  - name: {{ $name | quote }}
+  {{- end }}
+{{- end }}
+{{- with $spec.spec.AMISelectorTerms.tags }}
+  - tags:
+{{ toYaml $spec.spec.AMISelectorTerms.tags | indent 6 }}
+{{- end }}
+{{- if and (not $spec.spec.AMISelectorTerms.ids) (not $spec.spec.AMISelectorTerms.names) (not $spec.spec.AMISelectorTerms.tags) $spec.spec.AMISelectorTerms.alias }}
+  - alias: {{ $spec.spec.AMISelectorTerms.alias }}
+{{- end }}
+{{- else }}
+  amiSelectorTerms:
+  - alias: al2023@latest
+{{- end }}
+  subnetSelectorTerms:
+{{- with $spec.spec.SubnetSelectorTerms.ids }}
+  {{- range $id := . }}
+  - id: {{ $id }}
+  {{- end }}
+{{- end }}
+{{- with $spec.spec.SubnetSelectorTerms.tags }}
+  - tags:
+{{ toYaml $spec.spec.SubnetSelectorTerms.tags | indent 6 }}
+{{- end }}
+  securityGroupSelectorTerms:
+{{- with $spec.spec.SecurityGroupSelectorTerms.ids }}
+  {{- range $id := . }}
+  - id: {{ $id }}
+  {{- end }}
+{{- end }}
+{{- with $spec.spec.SecurityGroupSelectorTerms.names }}
+  {{- range $name := . }}
+  - name: {{ $name }}
+  {{- end }}
+{{- end }}
+{{- with $spec.spec.SecurityGroupSelectorTerms.tags }}
+  - tags:
+{{ toYaml $spec.spec.SecurityGroupSelectorTerms.tags | indent 6 }}
+{{- end }}
+{{- if $spec.spec.Role }}
+  role: {{ $spec.spec.Role }}
+{{- else }}
+{{- if $spec.spec.InstanceProfile }}
+  instanceProfile: {{ $spec.spec.InstanceProfile }}
+{{- end }}
+{{- end }}
+{{- if $spec.spec.Tags }}
+  tags:
+{{ toYaml $spec.spec.Tags | indent 4 }}
+{{- end }}
+{{- if $spec.spec.MetadataOptions }}
+  metadataOptions:
+{{ toYaml $spec.spec.MetadataOptions | indent 4 }}
+{{- end }}
+{{- with $spec.spec.BlockDeviceMappings }}
+  {{- range $block := . }}
+  blockDeviceMappings:
+  - deviceName: {{ $block.deviceName }}
+    ebs:
+    {{- range $key, $value := $block.ebs }}
+      {{ $key }}: {{ $value }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- if $spec.spec.DetailedMonitoring }}
+  detailedMonitoring: {{ $spec.spec.DetailedMonitoring }}
+{{- end }}
+{{- if $spec.spec.AssociatePublicIPAddress }}
+  associatePublicIPAddress: {{ $spec.spec.AssociatePublicIPAddress }}
+{{- end }}
+{{- if $spec.spec.InstanceStorePolicy }}
+  instanceStorePolicy: {{ $spec.spec.InstanceStorePolicy }}
+{{- end }}
+{{- if $spec.spec.UserData }}
+  userData: {{- toYaml $spec.spec.UserData | indent 4 -}}
+{{- end }}
+{{ end }}
+{{ end }}
