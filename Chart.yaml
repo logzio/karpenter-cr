@@ -1,17 +1,17 @@
 apiVersion: v2
-appVersion: "1.0.6"
+appVersion: "1.0.7"
 dependencies:
   - condition: karpenter-crd.enabled
     name: karpenter-crd
     repository: oci://public.ecr.aws/karpenter
-    version: 1.0.6
+    version: 1.0.7
   - condition: karpenter.enabled
     name: karpenter
     repository: oci://public.ecr.aws/karpenter
-    version: 1.0.6
+    version: 1.0.7
 description: Used to deploy Karpenter nodepool and ec2nodeclasses custom resources
 maintainers:
   - name: Devops Team
     email: yuri.tsuprun@logz.io
 name: karpenter-cr
-version: 1.0.6
+version: 1.0.7
