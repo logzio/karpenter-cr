@@ -14,4 +14,4 @@ maintainers:
   - name: Devops Team
     email: yuri.tsuprun@logz.io
 name: karpenter-cr
-version: 1.0.0
+version: 1.0.6
